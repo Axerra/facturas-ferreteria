@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallinaza y Materiales Tejada - Sistema de Facturación</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gallinaza y Materiales</h2>
+            <p>Tejada</p>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" data-page="dashboard" class="active">Inicio</a></li>
+            <li><a href="#" data-page="products">Productos</a></li>
+            <li><a href="#" data-page="quotations">Cotizaciones</a></li>
+            <li><a href="#" data-page="invoices">Facturas</a></li>
+            <li><a href="#" data-page="history">Historial</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <!-- Dashboard -->
+        <section id="page-dashboard" class="page active">
+            <h1>Panel Principal</h1>
+            <div class="dashboard-cards">
+                <div class="card card-clickable" onclick="App.showInvoicesByStatus('all')">
+                    <h3>Total Facturas</h3>
+                    <p id="stat-total-invoices">0</p>
+                </div>
+                <div class="card card-green card-clickable" onclick="App.showInvoicesByStatus('pagado')">
+                    <h3>Pagadas</h3>
+                    <p id="stat-paid-pct">0%</p>
+                </div>
+                <div class="card card-orange card-clickable" onclick="App.showInvoicesByStatus('pendiente')">
+                    <h3>Pendientes por Pagar</h3>
+                    <p id="stat-pending-pct">0%</p>
+                </div>
+            </div>
+            <div class="dashboard-cards">
+                <div class="card">
+                    <h3>Ganancia del Mes</h3>
+                    <p id="stat-month-sales">$0</p>
+                </div>
+                <div class="card">
+                    <h3>Ganancia Total</h3>
+                    <p id="stat-total-sales">$0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Products -->
+        <section id="page-products" class="page">
+            <h1>Catálogo de Productos</h1>
+            <button class="btn btn-primary" onclick="Products.showAddModal()">+ Nuevo Producto</button>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="products-table-body"></tbody>
+            </table>
+        </section>
+
+        <!-- Quotations -->
+        <section id="page-quotations" class="page">
+            <h1>Nueva Cotización</h1>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre del Cliente</label>
+                    <input type="text" id="quote-client-name" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>NIT / Cédula</label>
+                    <input type="text" id="quote-client-id" placeholder="NIT o Cédula">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" id="quote-client-phone" placeholder="Teléfono">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Dirección</label>
+                    <input type="text" id="quote-client-address" placeholder="Dirección del cliente">
+                </div>
+            </div>
+
+            <h3>Agregar Productos</h3>
+            <div class="form-row add-product-row">
+                <div class="form-group">
+                    <label>Producto</label>
+                    <select id="quote-product-select"></select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad</label>
+                    <input type="number" id="quote-quantity" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Precio Unitario</label>
+                    <input type="number" id="quote-unit-price" readonly>
+                </div>
+                <button class="btn btn-primary" onclick="Quotations.addItem()">Agregar</button>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Cant.</th>
+                        <th>Detalles</th>
+                        <th>Valor Unitario</th>
+                        <th>Valor Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="quote-items-body"></tbody>
+            </table>
+
+            <div class="totals-section">
+                <div class="total-line total-final">
+                    <span>TOTAL:</span>
+                    <span id="quote-total">$0</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="Quotations.clearForm()">Limpiar</button>
+                <button class="btn btn-primary" onclick="Quotations.print()">Imprimir Cotización</button>
+                <button class="btn btn-success" onclick="Quotations.convertToInvoice()">Convertir a Factura</button>
+            </div>
+        </section>
+
+        <!-- Invoices -->
+        <section id="page-invoices" class="page">
+            <h1>Nueva Factura</h1>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>No. Factura</label>
+                    <input type="text" id="invoice-number" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="invoice-date">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre del Cliente</label>
+                    <input type="text" id="invoice-client-name" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>NIT / Cédula</label>
+                    <input type="text" id="invoice-client-id" placeholder="NIT o Cédula">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" id="invoice-client-phone" placeholder="Teléfono">
+                </div>
+                <div class="form-group">
+                    <label>Dirección del Cliente</label>
+                    <input type="text" id="invoice-client-address" placeholder="Dirección">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Dirección de Envío</label>
+                    <input type="text" id="invoice-shipping-address" placeholder="Dirección de envío (si aplica)">
+                </div>
+                <div class="form-group">
+                    <label>Estado de Despacho</label>
+                    <select id="invoice-dispatch-status">
+                        <option value="pendiente">Pendiente</option>
+                        <option value="despachado">Despachado</option>
+                        <option value="cliente_recoge">Cliente Recoge</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3>Agregar Productos</h3>
+            <div class="form-row add-product-row">
+                <div class="form-group">
+                    <label>Producto</label>
+                    <select id="invoice-product-select"></select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad</label>
+                    <input type="number" id="invoice-quantity" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Precio Unitario</label>
+                    <input type="number" id="invoice-unit-price" readonly>
+                </div>
+                <button class="btn btn-primary" onclick="Invoices.addItem()">Agregar</button>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Cant.</th>
+                        <th>Detalles</th>
+                        <th>Valor Unitario</th>
+                        <th>Valor Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-items-body"></tbody>
+            </table>
+
+            <div class="totals-section">
+                <div class="total-line total-final">
+                    <span>TOTAL:</span>
+                    <span id="invoice-total">$0</span>
+                </div>
+            </div>
+
+            <div class="payment-section">
+                <h3>Tracking de Pago</h3>
+                
+                <div class="payment-amount-row">
+                    <div class="form-group">
+                        <label>Monto del Abono</label>
+                        <input type="number" id="invoice-payment" min="0" value="0" placeholder="Ingrese el abono">
+                    </div>
+                    <div class="quick-pay-buttons">
+                        <button class="btn btn-small" onclick="Invoices.quickPay(0)">Pendiente</button>
+                        <button class="btn btn-small" onclick="Invoices.quickPay(25)">25%</button>
+                        <button class="btn btn-small" onclick="Invoices.quickPay(50)">50%</button>
+                        <button class="btn btn-small" onclick="Invoices.quickPay(75)">75%</button>
+                        <button class="btn btn-small btn-success" onclick="Invoices.quickPay(100)">Total</button>
+                    </div>
+                </div>
+
+                <div class="payment-progress-container">
+                    <div class="payment-progress-bar">
+                        <div class="payment-progress-fill" id="payment-progress-fill"></div>
+                    </div>
+                    <div class="payment-progress-text" id="payment-progress-text">0%</div>
+                </div>
+
+                <div class="payment-status-display">
+                    <span id="invoice-payment-status-text" class="badge badge-pending">PENDIENTE</span>
+                </div>
+
+                <div class="payment-summary">
+                    <div class="total-line">
+                        <span>Total Factura:</span>
+                        <span id="invoice-pay-total">$0</span>
+                    </div>
+                    <div class="total-line">
+                        <span>Abonado:</span>
+                        <span id="invoice-pay-paid">$0</span>
+                    </div>
+                    <div class="total-line total-final">
+                        <span>Saldo Pendiente:</span>
+                        <span id="invoice-pay-balance">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-danger" onclick="Invoices.deleteLast()">Eliminar Factura</button>
+                <button class="btn btn-secondary" onclick="Invoices.clearForm()">Limpiar</button>
+                <button class="btn btn-success" onclick="Invoices.save()">Guardar Factura</button>
+                <button class="btn btn-primary" onclick="Invoices.print()">Imprimir y Guardar Factura</button>
+            </div>
+        </section>
+
+        <!-- History -->
+        <section id="page-history" class="page">
+            <h1>Historial</h1>
+            <div class="filters">
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="history-type" onchange="App.invoiceFilter = 'all'; History.load()">
+                        <option value="all">Todos</option>
+                        <option value="factura">Facturas</option>
+                        <option value="cotizacion">Cotizaciones</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Buscar</label>
+                    <input type="text" id="history-search" placeholder="Nombre o número..." oninput="History.load()">
+                </div>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>No.</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado Pago</th>
+                        <th>Estado Despacho</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+            </table>
+        </section>
+    </main>
+
+    <!-- Print Template (hidden) -->
+    <div id="print-container"></div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-product-title">Nuevo Producto</h2>
+            <input type="hidden" id="modal-product-id">
+            <div class="form-group">
+                <label>Código</label>
+                <input type="text" id="modal-product-code" placeholder="Código del producto">
+            </div>
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="modal-product-name" placeholder="Nombre del producto">
+            </div>
+            <div class="form-group">
+                <label>Precio</label>
+                <input type="number" id="modal-product-price" min="0" placeholder="Precio">
+            </div>
+            <div class="form-group">
+                <label>Stock</label>
+                <input type="number" id="modal-product-stock" min="0" placeholder="Stock">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="Products.closeModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="Products.saveProduct()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <h2>Registrar Abono</h2>
+            <input type="hidden" id="payment-invoice-id">
+            <div class="form-group">
+                <label>Total de la Factura</label>
+                <input type="text" id="payment-modal-total" readonly>
+            </div>
+            <div class="form-group">
+                <label>Saldo Pendiente</label>
+                <input type="text" id="payment-modal-balance" readonly>
+            </div>
+            <div class="form-group">
+                <label>Monto del Abono</label>
+                <input type="number" id="payment-modal-amount" min="1" placeholder="Monto">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="Invoices.closePaymentModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="Invoices.processPayment()">Registrar Abono</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="data/sample-products.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/quotations.js"></script>
+    <script src="js/invoices.js"></script>
+    <script src="js/history.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
