@@ -55,6 +55,10 @@ const History = {
                 const dispatchText = item.dispatchStatus === 'despachado' ? 'Despachado' :
                                     item.dispatchStatus === 'cliente_recoge' ? 'Cliente Recoge' : 'Pendiente';
                 dispatchStatus = `<span class="badge ${dispatchClass}">${dispatchText}</span>`;
+
+                const electronicBadge = item.electronicInvoice ? 
+                    '<span class="badge badge-electronic">Electrónica</span>' : '';
+                dispatchStatus += electronicBadge;
             } else {
                 paymentStatus = '-';
                 dispatchStatus = '-';
@@ -68,6 +72,7 @@ const History = {
                     <button class="btn btn-primary btn-small" onclick="History.printInvoice(${item.number})">Imprimir</button>
                     <button class="btn btn-success btn-small" onclick="Invoices.showPaymentModal(${item.number})">Abono</button>
                     <button class="btn btn-secondary btn-small" onclick="Invoices.toggleDispatch(${item.number})">Despacho</button>
+                    ${!item.electronicInvoice ? `<button class="btn btn-electronic btn-small" onclick="Electronic.sendInvoiceByNumber(${item.number})">Electrónica</button>` : ''}
                 `;
             } else {
                 actions = `

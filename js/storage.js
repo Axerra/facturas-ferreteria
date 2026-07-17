@@ -24,6 +24,17 @@ const Storage = {
         this.set('invoices', invoices);
     },
 
+    saveInvoice(invoice) {
+        const invoices = this.getInvoices();
+        const index = invoices.findIndex(inv => inv.number === invoice.number);
+        if (index !== -1) {
+            invoices[index] = invoice;
+        } else {
+            invoices.push(invoice);
+        }
+        this.saveInvoices(invoices);
+    },
+
     getQuotations() {
         return this.get('quotations') || [];
     },

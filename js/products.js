@@ -98,5 +98,15 @@ const Products = {
 
     getById(id) {
         return Storage.getProducts().find(p => p.id === id);
+    },
+
+    search(query) {
+        if (!query || query.length < 1) return [];
+        const products = Storage.getProducts();
+        const q = query.toLowerCase();
+        return products.filter(p => 
+            p.name.toLowerCase().includes(q) || 
+            p.code.toLowerCase().includes(q)
+        );
     }
 };

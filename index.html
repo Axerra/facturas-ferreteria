@@ -18,6 +18,7 @@
             <li><a href="#" data-page="quotations">Cotizaciones</a></li>
             <li><a href="#" data-page="invoices">Facturas</a></li>
             <li><a href="#" data-page="history">Historial</a></li>
+            <li><a href="#" onclick="Electronic.showConfigModal(); return false;">Factus Config</a></li>
         </ul>
     </nav>
 
@@ -95,9 +96,13 @@
 
             <h3>Agregar Productos</h3>
             <div class="form-row add-product-row">
-                <div class="form-group">
+                <div class="form-group product-search-group">
                     <label>Producto</label>
-                    <select id="quote-product-select"></select>
+                    <div class="product-search-container">
+                        <input type="text" id="quote-product-search" placeholder="Buscar producto..." oninput="Quotations.searchProduct(this.value)">
+                        <input type="hidden" id="quote-product-id">
+                        <div class="product-search-list" id="quote-product-list"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Cantidad</label>
@@ -185,9 +190,13 @@
 
             <h3>Agregar Productos</h3>
             <div class="form-row add-product-row">
-                <div class="form-group">
+                <div class="form-group product-search-group">
                     <label>Producto</label>
-                    <select id="invoice-product-select"></select>
+                    <div class="product-search-container">
+                        <input type="text" id="invoice-product-search" placeholder="Buscar producto..." oninput="Invoices.searchProduct(this.value)">
+                        <input type="hidden" id="invoice-product-id">
+                        <div class="product-search-list" id="invoice-product-list"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Cantidad</label>
@@ -269,6 +278,7 @@
                 <button class="btn btn-secondary" onclick="Invoices.clearForm()">Limpiar</button>
                 <button class="btn btn-success" onclick="Invoices.save()">Guardar Factura</button>
                 <button class="btn btn-primary" onclick="Invoices.print()">Imprimir y Guardar Factura</button>
+                <button class="btn btn-electronic" onclick="Electronic.sendInvoice()">Facturar Electrónicamente</button>
             </div>
         </section>
 
@@ -362,12 +372,46 @@
         </div>
     </div>
 
+    <!-- Electronic Invoice Config Modal -->
+    <div id="electronic-modal" class="modal">
+        <div class="modal-content">
+            <h2>Configuración Factus</h2>
+            <p class="modal-hint">Credenciales de la API de Factus para facturación electrónica DIAN</p>
+            <div class="form-group">
+                <label>Base URL</label>
+                <input type="text" id="electronic-base-url" placeholder="https://api-sandbox.factus.com.co">
+            </div>
+            <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="electronic-client-id" placeholder="Tu client_id">
+            </div>
+            <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="electronic-client-secret" placeholder="Tu client_secret">
+            </div>
+            <div class="form-group">
+                <label>Usuario Factus</label>
+                <input type="text" id="electronic-username" placeholder="Usuario">
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="electronic-password" placeholder="Contraseña">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="Electronic.closeConfigModal()">Cancelar</button>
+                <button class="btn btn-secondary" onclick="Electronic.testConnection()">Probar Conexión</button>
+                <button class="btn btn-primary" onclick="Electronic.saveConfigFromModal()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="data/sample-products.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/products.js"></script>
     <script src="js/quotations.js"></script>
     <script src="js/invoices.js"></script>
     <script src="js/history.js"></script>
+    <script src="js/electronic.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

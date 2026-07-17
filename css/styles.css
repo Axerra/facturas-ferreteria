@@ -472,11 +472,105 @@ h3 {
     color: #7b1fa2;
 }
 
+.btn-electronic {
+    background-color: #0d47a1;
+    color: white;
+}
+
+.btn-electronic:hover {
+    background-color: #1565c0;
+}
+
+.modal-hint {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.badge-electronic {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
 /* Add product row */
 .add-product-row {
     background: #e8eaf6;
     padding: 15px;
     border-radius: 5px;
+}
+
+/* Product Search */
+.product-search-group {
+    flex: 2;
+    min-width: 250px;
+}
+
+.product-search-container {
+    position: relative;
+}
+
+.product-search-container input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.product-search-container input[type="text"]:focus {
+    outline: none;
+    border-color: #1a237e;
+}
+
+.product-search-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+}
+
+.product-search-list.active {
+    display: block;
+}
+
+.product-search-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.product-search-item:hover {
+    background-color: #f5f5f5;
+}
+
+.product-search-item:last-child {
+    border-bottom: none;
+}
+
+.product-search-item .product-name {
+    font-weight: 500;
+}
+
+.product-search-item .product-price {
+    color: #1a237e;
+    font-weight: bold;
+}
+
+.product-search-no-results {
+    padding: 10px;
+    color: #999;
+    text-align: center;
 }
 
 /* Print Styles */

@@ -3,22 +3,29 @@ const Invoices = {
 
     init() {
         this.items = [];
-        Products.populateSelect('invoice-product-select');
         this.setupListeners();
         this.setNextNumber();
         this.setTodayDate();
+        this.clearSearchFields();
     },
 
     setupListeners() {
-        const select = document.getElementById('invoice-product-select');
-        select.addEventListener('change', () => {
-            const product = Products.getById(parseInt(select.value));
-            document.getElementById('invoice-unit-price').value = product ? product.price : '';
-        });
-
         document.getElementById('invoice-payment').addEventListener('input', () => {
             this.updatePaymentSummary();
         });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.product-search-container')) {
+                document.getElementById('invoice-product-list').classList.remove('active');
+            }
+        });
+    },
+
+    clearSearchFields() {
+        document.getElementById('invoice-product-search').value = '';
+        document.getElementById('invoice-product-id').value = '';
+        document.getElementById('invoice-unit-price').value = '';
+        document.getElementById('invoice-quantity').value = 1;
     },
 
     setNextNumber() {
@@ -30,10 +37,42 @@ const Invoices = {
         document.getElementById('invoice-date').value = new Date().toISOString().split('T')[0];
     },
 
+    searchProduct(query) {
+        const list = document.getElementById('invoice-product-list');
+        const results = Products.search(query);
+        
+        if (query.length === 0) {
+            list.classList.remove('active');
+            return;
+        }
+
+        if (results.length === 0) {
+            list.innerHTML = '<div class="product-search-no-results">No se encontraron productos</div>';
+        } else {
+            list.innerHTML = results.map(p => `
+                <div class="product-search-item" onclick="Invoices.selectProduct(${p.id})">
+                    <span class="product-name">${p.name}</span>
+                    <span class="product-price">${Products.formatCurrency(p.price)}</span>
+                </div>
+            `).join('');
+        }
+        
+        list.classList.add('active');
+    },
+
+    selectProduct(productId) {
+        const product = Products.getById(productId);
+        if (!product) return;
+
+        document.getElementById('invoice-product-search').value = product.name;
+        document.getElementById('invoice-product-id').value = product.id;
+        document.getElementById('invoice-unit-price').value = product.price;
+        document.getElementById('invoice-product-list').classList.remove('active');
+    },
+
     addItem() {
-        const select = document.getElementById('invoice-product-select');
+        const productId = parseInt(document.getElementById('invoice-product-id').value);
         const quantity = parseInt(document.getElementById('invoice-quantity').value);
-        const productId = parseInt(select.value);
 
         if (!productId || isNaN(quantity) || quantity <= 0) {
             alert('Seleccione un producto y cantidad válida');
@@ -52,9 +91,7 @@ const Invoices = {
         });
 
         this.updateTable();
-        select.value = '';
-        document.getElementById('invoice-unit-price').value = '';
-        document.getElementById('invoice-quantity').value = 1;
+        this.clearSearchFields();
     },
 
     removeItem(index) {
@@ -133,10 +170,8 @@ const Invoices = {
         document.getElementById('invoice-client-address').value = '';
         document.getElementById('invoice-shipping-address').value = '';
         document.getElementById('invoice-dispatch-status').value = 'pendiente';
-        document.getElementById('invoice-product-select').value = '';
-        document.getElementById('invoice-unit-price').value = '';
-        document.getElementById('invoice-quantity').value = 1;
         document.getElementById('invoice-payment').value = 0;
+        this.clearSearchFields();
         this.updateTable();
         this.setNextNumber();
         this.setTodayDate();
@@ -487,5 +522,25 @@ const Invoices = {
 
         Storage.saveInvoices(invoices);
         History.load();
+    },
+
+    getCurrentInvoiceData() {
+        if (this.items.length === 0) return null;
+
+        const client = this.getClientData();
+        const formData = this.getFormData();
+        const total = this.items.reduce((sum, item) => sum + item.total, 0);
+
+        return {
+            number: parseInt(formData.number),
+            date: formData.date,
+            client,
+            shippingAddress: formData.shippingAddress,
+            items: [...this.items],
+            total,
+            payment: formData.payment,
+            paymentStatus: formData.paymentStatus,
+            dispatchStatus: formData.dispatchStatus
+        };
     }
 };

@@ -3,22 +3,61 @@ const Quotations = {
 
     init() {
         this.items = [];
-        Products.populateSelect('quote-product-select');
         this.setupListeners();
+        this.clearSearchFields();
     },
 
     setupListeners() {
-        const select = document.getElementById('quote-product-select');
-        select.addEventListener('change', () => {
-            const product = Products.getById(parseInt(select.value));
-            document.getElementById('quote-unit-price').value = product ? product.price : '';
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.product-search-container')) {
+                document.getElementById('quote-product-list').classList.remove('active');
+            }
         });
     },
 
+    clearSearchFields() {
+        document.getElementById('quote-product-search').value = '';
+        document.getElementById('quote-product-id').value = '';
+        document.getElementById('quote-unit-price').value = '';
+        document.getElementById('quote-quantity').value = 1;
+    },
+
+    searchProduct(query) {
+        const list = document.getElementById('quote-product-list');
+        const results = Products.search(query);
+        
+        if (query.length === 0) {
+            list.classList.remove('active');
+            return;
+        }
+
+        if (results.length === 0) {
+            list.innerHTML = '<div class="product-search-no-results">No se encontraron productos</div>';
+        } else {
+            list.innerHTML = results.map(p => `
+                <div class="product-search-item" onclick="Quotations.selectProduct(${p.id})">
+                    <span class="product-name">${p.name}</span>
+                    <span class="product-price">${Products.formatCurrency(p.price)}</span>
+                </div>
+            `).join('');
+        }
+        
+        list.classList.add('active');
+    },
+
+    selectProduct(productId) {
+        const product = Products.getById(productId);
+        if (!product) return;
+
+        document.getElementById('quote-product-search').value = product.name;
+        document.getElementById('quote-product-id').value = product.id;
+        document.getElementById('quote-unit-price').value = product.price;
+        document.getElementById('quote-product-list').classList.remove('active');
+    },
+
     addItem() {
-        const select = document.getElementById('quote-product-select');
+        const productId = parseInt(document.getElementById('quote-product-id').value);
         const quantity = parseInt(document.getElementById('quote-quantity').value);
-        const productId = parseInt(select.value);
 
         if (!productId || isNaN(quantity) || quantity <= 0) {
             alert('Seleccione un producto y cantidad válida');
@@ -37,9 +76,7 @@ const Quotations = {
         });
 
         this.updateTable();
-        select.value = '';
-        document.getElementById('quote-unit-price').value = '';
-        document.getElementById('quote-quantity').value = 1;
+        this.clearSearchFields();
     },
 
     removeItem(index) {
@@ -74,9 +111,7 @@ const Quotations = {
         document.getElementById('quote-client-id').value = '';
         document.getElementById('quote-client-phone').value = '';
         document.getElementById('quote-client-address').value = '';
-        document.getElementById('quote-product-select').value = '';
-        document.getElementById('quote-unit-price').value = '';
-        document.getElementById('quote-quantity').value = 1;
+        this.clearSearchFields();
         this.updateTable();
     },
 

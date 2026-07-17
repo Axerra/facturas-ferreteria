@@ -4,6 +4,7 @@ const App = {
         Products.init();
         Quotations.init();
         Invoices.init();
+        Electronic.init();
         History.load();
         this.updateDashboard();
     },
