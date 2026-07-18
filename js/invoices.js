@@ -206,7 +206,7 @@ const Invoices = {
         };
     },
 
-    save() {
+    async save() {
         if (this.items.length === 0) {
             alert('Agregue al menos un producto');
             return;
@@ -243,14 +243,18 @@ const Invoices = {
         // Update invoice number
         Storage.set('lastInvoiceNumber', invoice.number);
 
-        Backup.saveInvoice(invoice);
-        alert('Factura guardada exitosamente');
+        const saved = await Backup.saveInvoice(invoice);
+        if (saved) {
+            alert('Factura guardada y respaldada en disco exitosamente');
+        } else {
+            alert('Factura guardada. Seleccione una carpeta de respaldo en Inicio para guardar en disco.');
+        }
         this.clearForm();
         History.load();
         App.updateDashboard();
     },
 
-    print() {
+    async print() {
         if (this.items.length === 0) {
             alert('Agregue al menos un producto');
             return;

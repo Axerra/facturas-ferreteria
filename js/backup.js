@@ -1,7 +1,44 @@
 const Backup = {
     dirHandle: null,
+    statusEl: null,
+
+    getStatusEl() {
+        if (!this.statusEl) {
+            this.statusEl = document.getElementById('backup-status');
+        }
+        return this.statusEl;
+    },
+
+    showStatus(msg, isError) {
+        const el = this.getStatusEl();
+        if (el) {
+            el.textContent = msg;
+            el.style.color = isError ? '#c62828' : '#2e7d32';
+        }
+    },
 
     async selectFolder() {
+        try {
+            this.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            localStorage.setItem('gallinaza_backup_folder', this.dirHandle.name);
+            this.showStatus(`Carpeta activa: ${this.dirHandle.name}`);
+            return true;
+        } catch (e) {
+            this.showStatus('Selección de carpeta cancelada', true);
+            return false;
+        }
+    },
+
+    async ensureFolder() {
+        if (this.dirHandle) {
+            try {
+                await this.dirHandle.getDirectoryHandle('test', { create: true });
+                return true;
+            } catch (e) {
+                this.dirHandle = null;
+            }
+        }
+
         try {
             this.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             localStorage.setItem('gallinaza_backup_folder', this.dirHandle.name);
@@ -24,20 +61,15 @@ const Backup = {
     },
 
     async saveInvoice(invoice) {
-        if (!this.dirHandle) {
-            const savedName = localStorage.getItem('gallinaza_backup_folder');
-            if (!savedName) return;
-            try {
-                this.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-            } catch (e) {
-                return;
-            }
+        const hasFolder = await this.ensureFolder();
+        if (!hasFolder) {
+            this.showStatus('No se pudo guardar la factura en disco. Seleccione una carpeta.', true);
+            return false;
         }
 
         try {
             const date = new Date(invoice.date);
             const monthYear = `${this.getMonthName(date.getMonth())} ${date.getFullYear()}`;
-
             const monthDir = await this.dirHandle.getDirectoryHandle(monthYear, { create: true });
 
             const day = String(date.getDate()).padStart(2, '0');
@@ -51,9 +83,11 @@ const Backup = {
             await writable.write(JSON.stringify(invoice, null, 2));
             await writable.close();
 
+            this.showStatus(`Factura guardada: ${monthYear}/${fileName}`);
             return true;
         } catch (e) {
             console.error('Error guardando factura:', e);
+            this.showStatus('Error guardando factura: ' + e.message, true);
             return false;
         }
     },
