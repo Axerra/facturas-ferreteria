@@ -60,6 +60,142 @@ const Backup = {
         return str.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
     },
 
+    generatePDF(invoice) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let y = 15;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('GALLINAZA Y MATERIALES TEJADA', pageWidth / 2, y, { align: 'center' });
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('NIT: 4640733-0', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+        doc.text('Arcadio Tejada Nunez Responsable del IVA', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+        doc.text('Vda. La Florida Piendamo', pageWidth / 2, y, { align: 'center' });
+        y += 5;
+        doc.text('Cel: 3168305501 - 3117096101', pageWidth / 2, y, { align: 'center' });
+        y += 8;
+
+        doc.setDrawColor(0, 0, 0);
+        doc.line(15, y, pageWidth - 15, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text('FACTURA DE VENTA', pageWidth / 2, y, { align: 'center' });
+        y += 10;
+
+        doc.setFontSize(10);
+        const numStr = String(invoice.number).padStart(6, '0');
+        doc.setFont('helvetica', 'normal');
+        doc.text('Fecha: ' + invoice.date, 15, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text('No. Factura: ' + numStr, pageWidth - 15, y, { align: 'right' });
+        y += 7;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text('Cliente: ' + (invoice.client.name || 'N/A'), 15, y);
+        doc.text('NIT/Cedula: ' + (invoice.client.id || 'N/A'), pageWidth - 15, y, { align: 'right' });
+        y += 7;
+        doc.text('Telefono: ' + (invoice.client.phone || 'N/A'), 15, y);
+        doc.text('Direccion: ' + (invoice.client.address || 'N/A'), pageWidth - 15, y, { align: 'right' });
+        y += 7;
+
+        if (invoice.shippingAddress) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Direccion de Envio: ', 15, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(invoice.shippingAddress, 52, y);
+            y += 7;
+        }
+
+        y += 3;
+
+        // Table header
+        doc.setFillColor(26, 35, 126);
+        doc.rect(15, y, pageWidth - 30, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Cant.', 20, y + 5.5);
+        doc.text('Detalles', 38, y + 5.5);
+        doc.text('V. Unitario', 120, y + 5.5);
+        doc.text('V. Total', 155, y + 5.5);
+        y += 8;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+
+        let subtotal = 0;
+        invoice.items.forEach(item => {
+            doc.text(String(item.quantity), 22, y + 4.5);
+            doc.text(item.name, 38, y + 4.5);
+            doc.text(Products.formatCurrency(item.unitPrice), 120, y + 4.5);
+            doc.text(Products.formatCurrency(item.total), 155, y + 4.5);
+            subtotal += item.total;
+            y += 7;
+
+            if (y > 260) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+
+        doc.line(15, y, pageWidth - 15, y);
+        y += 3;
+
+        // Total
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('TOTAL:', 120, y + 5);
+        doc.text(Products.formatCurrency(invoice.total), 155, y + 5);
+        y += 10;
+
+        // Payment section
+        doc.setDrawColor(0, 0, 0);
+        doc.roundedRect(15, y, pageWidth - 30, 30, 2, 2, 'S');
+        y += 6;
+
+        doc.setFontSize(10);
+        const payStatus = invoice.paymentStatus === 'pagado' ? 'PAGADO' :
+                          invoice.paymentStatus === 'abonado' ? 'ABONADO' : 'PENDIENTE';
+        doc.setFont('helvetica', 'bold');
+        doc.text('Estado de Pago: ' + payStatus, 20, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text('Total:', 20, y);
+        doc.text(Products.formatCurrency(invoice.total), 60, y);
+        doc.text('Abono:', 95, y);
+        doc.text(Products.formatCurrency(invoice.payment || 0), 130, y);
+        y += 6;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Saldo:', 20, y);
+        doc.text(Products.formatCurrency(invoice.balance || 0), 60, y);
+        y += 12;
+
+        const dispatchText = invoice.dispatchStatus === 'despachado' ? 'DESPACHADO' :
+                             invoice.dispatchStatus === 'cliente_recoge' ? 'CLIENTE RECOGE' : 'PENDIENTE';
+        doc.setFont('helvetica', 'normal');
+        doc.text('Estado de Despacho: ' + dispatchText, 20, y);
+        y += 15;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Gallinaza y Materiales Tejada - Vda. La Florida Piendamo', pageWidth / 2, y, { align: 'center' });
+        y += 4;
+        doc.text('Cel: 3168305501 - 3117096101', pageWidth / 2, y, { align: 'center' });
+
+        return doc;
+    },
+
     async saveInvoice(invoice) {
         const hasFolder = await this.ensureFolder();
         if (!hasFolder) {
@@ -76,14 +212,17 @@ const Backup = {
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
             const clientName = this.sanitizeFileName(invoice.client.name || 'SinCliente');
-            const fileName = `${day}-${month}-${year} ${clientName}.json`;
+            const fileName = `Factura ${day}-${month}-${year} ${clientName}.pdf`;
+
+            const doc = this.generatePDF(invoice);
+            const pdfBlob = doc.output('blob');
 
             const fileHandle = await monthDir.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
-            await writable.write(JSON.stringify(invoice, null, 2));
+            await writable.write(pdfBlob);
             await writable.close();
 
-            this.showStatus(`Factura guardada: ${monthYear}/${fileName}`);
+            this.showStatus(`Factura PDF guardada: ${monthYear}/${fileName}`);
             return true;
         } catch (e) {
             console.error('Error guardando factura:', e);
