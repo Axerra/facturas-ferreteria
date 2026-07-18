@@ -34,6 +34,7 @@ const App = {
         document.getElementById(`page-${page}`).classList.add('active');
 
         // Refresh data when needed
+        if (page === 'dashboard') this.updateDashboard();
         if (page === 'products') Products.load();
         if (page === 'history') History.load();
         if (page === 'invoices') {
@@ -60,21 +61,19 @@ const App = {
         document.getElementById('stat-paid-pct').textContent = paidInvoices + ' Facturas';
         document.getElementById('stat-pending-pct').textContent = pendingInvoices + ' Facturas';
 
-        // Ganancia del mes (solo facturas pagadas)
+        // Ganancia del mes (suma de lo abonado/pagado)
         const monthlySales = invoices
             .filter(inv => {
                 const invDate = new Date(inv.date);
                 return invDate.getMonth() === currentMonth && 
-                       invDate.getFullYear() === currentYear &&
-                       inv.paymentStatus === 'pagado';
+                       invDate.getFullYear() === currentYear;
             })
-            .reduce((sum, inv) => sum + (inv.total || 0), 0);
+            .reduce((sum, inv) => sum + (inv.payment || 0), 0);
         document.getElementById('stat-month-sales').textContent = Products.formatCurrency(monthlySales);
 
-        // Ganancia total (solo facturas pagadas)
+        // Ganancia total (suma de lo abonado/pagado)
         const totalSales = invoices
-            .filter(inv => inv.paymentStatus === 'pagado')
-            .reduce((sum, inv) => sum + (inv.total || 0), 0);
+            .reduce((sum, inv) => sum + (inv.payment || 0), 0);
         document.getElementById('stat-total-sales').textContent = Products.formatCurrency(totalSales);
     },
 
