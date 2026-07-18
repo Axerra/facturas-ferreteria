@@ -492,6 +492,26 @@ h3 {
     color: #0d47a1;
 }
 
+/* Backup */
+.backup-hint {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.backup-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.backup-status {
+    color: #2e7d32;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
 /* Add product row */
 .add-product-row {
     background: #e8eaf6;

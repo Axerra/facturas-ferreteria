@@ -243,6 +243,7 @@ const Invoices = {
         // Update invoice number
         Storage.set('lastInvoiceNumber', invoice.number);
 
+        Backup.saveInvoice(invoice);
         alert('Factura guardada exitosamente');
         this.clearForm();
         History.load();
@@ -284,6 +285,8 @@ const Invoices = {
         invoices.push(invoice);
         Storage.saveInvoices(invoices);
         Storage.set('lastInvoiceNumber', invoice.number);
+
+        Backup.saveInvoice(invoice);
 
         // Print
         const html = this.generatePrintHTML(formData, client, total);
@@ -505,6 +508,7 @@ const Invoices = {
         }
 
         Storage.saveInvoices(invoices);
+        Backup.saveInvoice(invoice);
         this.closePaymentModal();
         History.load();
         App.updateDashboard();

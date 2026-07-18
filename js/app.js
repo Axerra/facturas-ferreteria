@@ -51,6 +51,13 @@ const App = {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
+        // Backup status
+        const backupFolder = localStorage.getItem('gallinaza_backup_folder');
+        const statusEl = document.getElementById('backup-status');
+        if (statusEl) {
+            statusEl.textContent = backupFolder ? `Carpeta activa: ${backupFolder}` : 'No hay carpeta de respaldo seleccionada';
+        }
+
         // Total facturas
         const totalInvoices = invoices.length;
         document.getElementById('stat-total-invoices').textContent = totalInvoices;

@@ -50,6 +50,16 @@
                     <p id="stat-total-sales">$0</p>
                 </div>
             </div>
+
+            <h3>Respaldo de Datos</h3>
+            <p class="backup-hint">Selecciona una carpeta en tu computador para guardar las facturas automáticamente como archivos JSON organizados por mes.</p>
+            <div class="backup-buttons">
+                <button class="btn btn-primary" onclick="Backup.selectFolder()">Seleccionar Carpeta de Respaldo</button>
+                <button class="btn btn-secondary" onclick="Backup.exportAll()">Descargar Backup Completo</button>
+                <button class="btn btn-secondary" onclick="Backup.restoreFromFolder().then(n => { alert(n + ' facturas restauradas'); App.updateDashboard(); })">Restaurar desde Carpeta</button>
+                <button class="btn btn-secondary" onclick="Backup.importFromBackup().then(n => { alert(n + ' registros importados'); App.updateDashboard(); })">Importar Backup</button>
+            </div>
+            <p id="backup-status" class="backup-status"></p>
         </section>
 
         <!-- Products -->
@@ -412,6 +422,7 @@
     <script src="js/invoices.js"></script>
     <script src="js/history.js"></script>
     <script src="js/electronic.js"></script>
+    <script src="js/backup.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
