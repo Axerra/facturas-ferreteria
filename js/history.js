@@ -12,7 +12,9 @@ const History = {
             let invoices = Storage.getInvoices().map(inv => ({ ...inv, type: 'factura' }));
             
             // Apply status filter if set from dashboard
-            if (statusFilter !== 'all') {
+            if (statusFilter === 'pendiente') {
+                invoices = invoices.filter(inv => App.isInvoicePending(inv));
+            } else if (statusFilter !== 'all') {
                 invoices = invoices.filter(inv => inv.paymentStatus === statusFilter);
             }
             

@@ -56,11 +56,9 @@ const App = {
 
         // Porcentaje pagadas vs pendientes
         const paidInvoices = invoices.filter(inv => inv.paymentStatus === 'pagado').length;
-        const pendingInvoices = totalInvoices - paidInvoices;
-        const paidPct = totalInvoices > 0 ? Math.round((paidInvoices / totalInvoices) * 100) : 0;
-        const pendingPct = 100 - paidPct;
-        document.getElementById('stat-paid-pct').textContent = paidPct + '%';
-        document.getElementById('stat-pending-pct').textContent = pendingPct + '%';
+        const pendingInvoices = invoices.filter(inv => inv.paymentStatus !== 'pagado').length;
+        document.getElementById('stat-paid-pct').textContent = paidInvoices + ' Facturas';
+        document.getElementById('stat-pending-pct').textContent = pendingInvoices + ' Facturas';
 
         // Ganancia del mes (solo facturas pagadas)
         const monthlySales = invoices
@@ -92,6 +90,10 @@ const App = {
         
         // Load history with filter
         History.load();
+    },
+
+    isInvoicePending(inv) {
+        return inv.paymentStatus === 'pendiente' || inv.paymentStatus === 'abonado';
     }
 };
 
