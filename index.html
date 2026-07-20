@@ -42,11 +42,11 @@
             </div>
             <div class="dashboard-cards">
                 <div class="card">
-                    <h3>Ganancia del Mes</h3>
+                    <h3>Recaudo del Mes</h3>
                     <p id="stat-month-sales">$0</p>
                 </div>
                 <div class="card">
-                    <h3>Ganancia Total</h3>
+                    <h3>Recaudo Total</h3>
                     <p id="stat-total-sales">$0</p>
                 </div>
             </div>
@@ -56,7 +56,6 @@
             <div class="backup-buttons">
                 <button class="btn btn-primary" onclick="Backup.selectFolder()">Seleccionar Carpeta de Respaldo</button>
                 <button class="btn btn-secondary" onclick="Backup.exportAll()">Descargar Backup Completo</button>
-                <button class="btn btn-secondary" onclick="Backup.restoreFromFolder().then(n => { alert(n + ' facturas restauradas'); App.updateDashboard(); })">Restaurar desde Carpeta</button>
                 <button class="btn btn-secondary" onclick="Backup.importFromBackup().then(n => { alert(n + ' registros importados'); App.updateDashboard(); })">Importar Backup</button>
             </div>
             <p id="backup-status" class="backup-status"></p>
@@ -116,11 +115,11 @@
                 </div>
                 <div class="form-group">
                     <label>Cantidad</label>
-                    <input type="number" id="quote-quantity" min="1" value="1">
+                    <input type="number" id="quote-quantity" min="0" step="any" value="1">
                 </div>
                 <div class="form-group">
                     <label>Precio Unitario</label>
-                    <input type="number" id="quote-unit-price" readonly>
+                    <input type="number" id="quote-unit-price" min="0" step="any">
                 </div>
                 <button class="btn btn-primary" onclick="Quotations.addItem()">Agregar</button>
             </div>
@@ -210,11 +209,11 @@
                 </div>
                 <div class="form-group">
                     <label>Cantidad</label>
-                    <input type="number" id="invoice-quantity" min="1" value="1">
+                    <input type="number" id="invoice-quantity" min="0" step="any" value="1">
                 </div>
                 <div class="form-group">
                     <label>Precio Unitario</label>
-                    <input type="number" id="invoice-unit-price" readonly>
+                    <input type="number" id="invoice-unit-price" min="0" step="any">
                 </div>
                 <button class="btn btn-primary" onclick="Invoices.addItem()">Agregar</button>
             </div>
@@ -284,7 +283,6 @@
             </div>
 
             <div class="action-buttons">
-                <button class="btn btn-danger" onclick="Invoices.deleteLast()">Eliminar Factura</button>
                 <button class="btn btn-secondary" onclick="Invoices.clearForm()">Limpiar</button>
                 <button class="btn btn-success" onclick="Invoices.save()">Guardar Factura</button>
                 <button class="btn btn-primary" onclick="Invoices.print()">Imprimir y Guardar Factura</button>

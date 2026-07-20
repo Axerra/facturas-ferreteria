@@ -250,9 +250,14 @@ const Electronic = {
     },
 
     async sendInvoice() {
-        const invoiceData = Invoices.getCurrentInvoiceData();
-        if (!invoiceData) {
+        if (Invoices.items.length === 0) {
             alert('Primero agregue productos a la factura');
+            return;
+        }
+
+        const client = Invoices.getClientData();
+        if (!client.name) {
+            alert('Ingrese el nombre del cliente');
             return;
         }
 
@@ -261,13 +266,52 @@ const Electronic = {
             return;
         }
 
+        const formData = Invoices.getFormData();
+        const total = Invoices.items.reduce((sum, item) => sum + item.total, 0);
+
+        const invoice = {
+            number: parseInt(formData.number),
+            date: formData.date,
+            client,
+            shippingAddress: formData.shippingAddress,
+            items: [...Invoices.items],
+            total,
+            payment: formData.payment,
+            balance: total - formData.payment,
+            paymentStatus: formData.paymentStatus,
+            dispatchStatus: formData.dispatchStatus,
+            type: 'factura',
+            createdAt: new Date().toISOString()
+        };
+
         try {
-            const result = await this.createInvoice(invoiceData);
-            if (result.success) {
-                alert('Factura electrónica enviada exitosamente\nCódigo: ' + (result.data?.uuid || 'N/A'));
-            } else {
+            const result = await this.createInvoice(invoice);
+            if (!result.success) {
                 alert('Error: ' + result.message);
+                return;
             }
+
+            invoice.electronicInvoice = true;
+            invoice.electronicUuid = result.data?.uuid;
+
+            const invoices = Storage.getInvoices();
+            invoices.push(invoice);
+            const persisted = Storage.saveInvoices(invoices);
+            if (!persisted) {
+                alert('¡ATENCIÓN! La factura SÍ se envió a la DIAN (código: ' + (result.data?.uuid || 'N/A') + '), ' +
+                      'pero NO se pudo guardar en este equipo. Anote el código y descargue un backup antes de continuar.');
+                return;
+            }
+            Invoices.applyStockChange(invoice.items, -1);
+            Storage.set('lastInvoiceNumber', invoice.number);
+
+            await Backup.saveInvoice(invoice);
+
+            alert('Factura electrónica enviada exitosamente\nCódigo: ' + (result.data?.uuid || 'N/A'));
+
+            Invoices.clearForm();
+            History.load();
+            App.updateDashboard();
         } catch (error) {
             alert('Error: ' + error.message);
         }

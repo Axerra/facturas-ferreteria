@@ -9,8 +9,8 @@ const Products = {
         const tbody = document.getElementById('products-table-body');
         tbody.innerHTML = products.map(p => `
             <tr>
-                <td>${p.code}</td>
-                <td>${p.name}</td>
+                <td>${this.escapeHtml(p.code)}</td>
+                <td>${this.escapeHtml(p.name)}</td>
                 <td>${this.formatCurrency(p.price)}</td>
                 <td>${p.stock}</td>
                 <td class="actions">
@@ -25,11 +25,21 @@ const Products = {
         return '$' + value.toLocaleString('es-CO');
     },
 
+    escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
     populateSelect(selectId) {
         const products = Storage.getProducts();
         const select = document.getElementById(selectId);
         select.innerHTML = '<option value="">Seleccionar producto...</option>' +
-            products.map(p => `<option value="${p.id}">${p.name} - ${this.formatCurrency(p.price)}</option>`).join('');
+            products.map(p => `<option value="${p.id}">${this.escapeHtml(p.name)} - ${this.formatCurrency(p.price)}</option>`).join('');
     },
 
     showAddModal() {
@@ -73,6 +83,16 @@ const Products = {
         }
 
         const products = Storage.getProducts();
+
+        // El código debe ser único (ignorando mayúsculas/espacios).
+        // Al editar, se excluye el propio producto de la comparación.
+        const codeKey = code.toLowerCase();
+        const duplicate = products.find(p =>
+            p.code.trim().toLowerCase() === codeKey && p.id !== parseInt(id));
+        if (duplicate) {
+            alert(`Ya existe un producto con el código "${code}" (${duplicate.name}). Use un código diferente.`);
+            return;
+        }
 
         if (id) {
             const index = products.findIndex(p => p.id === parseInt(id));

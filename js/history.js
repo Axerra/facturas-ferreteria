@@ -33,11 +33,11 @@ const History = {
             );
         }
 
-        items.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+        items.sort((a, b) => Storage.parseLocalDate(b.date || b.createdAt) - Storage.parseLocalDate(a.date || a.createdAt));
 
         const tbody = document.getElementById('history-table-body');
         tbody.innerHTML = items.map(item => {
-            const date = item.date ? new Date(item.date).toLocaleDateString('es-CO') : 'N/A';
+            const date = item.date ? Storage.parseLocalDate(item.date).toLocaleDateString('es-CO') : 'N/A';
             const typeBadge = item.type === 'factura' ? 
                 '<span class="badge badge-dispatched">Factura</span>' : 
                 '<span class="badge badge-waiting">Cotización</span>';
@@ -87,7 +87,7 @@ const History = {
                     <td>${typeBadge}</td>
                     <td>${number}</td>
                     <td>${date}</td>
-                    <td>${item.client ? item.client.name : 'N/A'}</td>
+                    <td>${item.client ? Products.escapeHtml(item.client.name) : 'N/A'}</td>
                     <td>${Products.formatCurrency(item.total || 0)}</td>
                     <td>${paymentStatus}</td>
                     <td>${dispatchStatus}</td>
@@ -115,7 +115,7 @@ const History = {
             paymentStatus: invoice.paymentStatus
         };
 
-        const html = Invoices.generatePrintHTML(formData, invoice.client, invoice.total);
+        const html = Invoices.generatePrintHTML(formData, invoice.client, invoice.total, invoice.items);
         Invoices.openPrintWindow(html);
     },
 
@@ -128,7 +128,8 @@ const History = {
             quote.number,
             new Date(quote.date).toLocaleDateString('es-CO'),
             quote.client,
-            quote.total
+            quote.total,
+            quote.items
         );
         Quotations.openPrintWindow(html);
     }

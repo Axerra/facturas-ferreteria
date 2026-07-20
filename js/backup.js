@@ -1,5 +1,5 @@
 const Backup = {
-    dirHandle: null,
+    backupPath: null,
     statusEl: null,
 
     getStatusEl() {
@@ -17,35 +17,25 @@ const Backup = {
         }
     },
 
-    async selectFolder() {
-        try {
-            this.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-            localStorage.setItem('gallinaza_backup_folder', this.dirHandle.name);
-            this.showStatus(`Carpeta activa: ${this.dirHandle.name}`);
-            return true;
-        } catch (e) {
-            this.showStatus('Selección de carpeta cancelada', true);
-            return false;
-        }
+    isElectron() {
+        return typeof window.electronAPI !== 'undefined';
     },
 
-    async ensureFolder() {
-        if (this.dirHandle) {
-            try {
-                await this.dirHandle.getDirectoryHandle('test', { create: true });
-                return true;
-            } catch (e) {
-                this.dirHandle = null;
-            }
-        }
-
-        try {
-            this.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-            localStorage.setItem('gallinaza_backup_folder', this.dirHandle.name);
-            return true;
-        } catch (e) {
+    async selectFolder() {
+        if (!this.isElectron()) {
+            this.showStatus('Respaldo de archivos solo disponible en la aplicación de escritorio', true);
             return false;
         }
+
+        const folder = await window.electronAPI.selectFolder();
+        if (folder) {
+            this.backupPath = folder;
+            localStorage.setItem('gallinaza_backup_folder', folder);
+            this.showStatus(`Carpeta activa: ${folder}`);
+            return true;
+        }
+        this.showStatus('Selección de carpeta cancelada', true);
+        return false;
     },
 
     getMonthName(month) {
@@ -63,7 +53,6 @@ const Backup = {
     generatePDF(invoice) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-
         const pageWidth = doc.internal.pageSize.getWidth();
         let y = 15;
 
@@ -71,7 +60,6 @@ const Backup = {
         doc.setFontSize(16);
         doc.text('GALLINAZA Y MATERIALES TEJADA', pageWidth / 2, y, { align: 'center' });
         y += 6;
-
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.text('NIT: 4640733-0', pageWidth / 2, y, { align: 'center' });
@@ -82,8 +70,6 @@ const Backup = {
         y += 5;
         doc.text('Cel: 3168305501 - 3117096101', pageWidth / 2, y, { align: 'center' });
         y += 8;
-
-        doc.setDrawColor(0, 0, 0);
         doc.line(15, y, pageWidth - 15, y);
         y += 8;
 
@@ -99,7 +85,6 @@ const Backup = {
         doc.setFont('helvetica', 'bold');
         doc.text('No. Factura: ' + numStr, pageWidth - 15, y, { align: 'right' });
         y += 7;
-
         doc.setFont('helvetica', 'normal');
         doc.text('Cliente: ' + (invoice.client.name || 'N/A'), 15, y);
         doc.text('NIT/Cedula: ' + (invoice.client.id || 'N/A'), pageWidth - 15, y, { align: 'right' });
@@ -115,10 +100,8 @@ const Backup = {
             doc.text(invoice.shippingAddress, 52, y);
             y += 7;
         }
-
         y += 3;
 
-        // Table header
         doc.setFillColor(26, 35, 126);
         doc.rect(15, y, pageWidth - 30, 8, 'F');
         doc.setTextColor(255, 255, 255);
@@ -133,43 +116,31 @@ const Backup = {
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'normal');
 
-        let subtotal = 0;
         invoice.items.forEach(item => {
             doc.text(String(item.quantity), 22, y + 4.5);
             doc.text(item.name, 38, y + 4.5);
             doc.text(Products.formatCurrency(item.unitPrice), 120, y + 4.5);
             doc.text(Products.formatCurrency(item.total), 155, y + 4.5);
-            subtotal += item.total;
             y += 7;
-
-            if (y > 260) {
-                doc.addPage();
-                y = 20;
-            }
+            if (y > 260) { doc.addPage(); y = 20; }
         });
 
         doc.line(15, y, pageWidth - 15, y);
         y += 3;
-
-        // Total
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
         doc.text('TOTAL:', 120, y + 5);
         doc.text(Products.formatCurrency(invoice.total), 155, y + 5);
         y += 10;
 
-        // Payment section
-        doc.setDrawColor(0, 0, 0);
         doc.roundedRect(15, y, pageWidth - 30, 30, 2, 2, 'S');
         y += 6;
-
         doc.setFontSize(10);
         const payStatus = invoice.paymentStatus === 'pagado' ? 'PAGADO' :
                           invoice.paymentStatus === 'abonado' ? 'ABONADO' : 'PENDIENTE';
         doc.setFont('helvetica', 'bold');
         doc.text('Estado de Pago: ' + payStatus, 20, y);
         y += 6;
-
         doc.setFont('helvetica', 'normal');
         doc.text('Total:', 20, y);
         doc.text(Products.formatCurrency(invoice.total), 60, y);
@@ -180,15 +151,12 @@ const Backup = {
         doc.text('Saldo:', 20, y);
         doc.text(Products.formatCurrency(invoice.balance || 0), 60, y);
         y += 12;
-
         const dispatchText = invoice.dispatchStatus === 'despachado' ? 'DESPACHADO' :
                              invoice.dispatchStatus === 'cliente_recoge' ? 'CLIENTE RECOGE' : 'PENDIENTE';
         doc.setFont('helvetica', 'normal');
         doc.text('Estado de Despacho: ' + dispatchText, 20, y);
         y += 15;
-
         doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
         doc.text('Gallinaza y Materiales Tejada - Vda. La Florida Piendamo', pageWidth / 2, y, { align: 'center' });
         y += 4;
         doc.text('Cel: 3168305501 - 3117096101', pageWidth / 2, y, { align: 'center' });
@@ -197,33 +165,47 @@ const Backup = {
     },
 
     async saveInvoice(invoice) {
-        const hasFolder = await this.ensureFolder();
-        if (!hasFolder) {
-            this.showStatus('No se pudo guardar la factura en disco. Seleccione una carpeta.', true);
-            return false;
+        if (!this.isElectron()) return false;
+
+        if (!this.backupPath) {
+            const path = await window.electronAPI.getBackupPath();
+            if (path) {
+                this.backupPath = path;
+                localStorage.setItem('gallinaza_backup_folder', path);
+            } else {
+                const selected = await this.selectFolder();
+                if (!selected) return false;
+            }
         }
 
         try {
-            const date = new Date(invoice.date);
+            const date = Storage.parseLocalDate(invoice.date);
             const monthYear = `${this.getMonthName(date.getMonth())} ${date.getFullYear()}`;
-            const monthDir = await this.dirHandle.getDirectoryHandle(monthYear, { create: true });
-
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
+            const numStr = String(invoice.number).padStart(6, '0');
             const clientName = this.sanitizeFileName(invoice.client.name || 'SinCliente');
-            const fileName = `Factura ${day}-${month}-${year} ${clientName}.pdf`;
+            const fileName = `Factura ${numStr} ${day}-${month}-${year} ${clientName}.pdf`;
 
             const doc = this.generatePDF(invoice);
-            const pdfBlob = doc.output('blob');
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-            const fileHandle = await monthDir.getFileHandle(fileName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(pdfBlob);
-            await writable.close();
+            const result = await window.electronAPI.savePDF({
+                fileName,
+                folderName: monthYear,
+                pdfBase64
+            });
 
-            this.showStatus(`Factura PDF guardada: ${monthYear}/${fileName}`);
-            return true;
+            if (result.success) {
+                this.showStatus(`Factura PDF guardada: ${monthYear}/${fileName}`);
+                // Además del PDF, refrescamos un respaldo JSON completo (red de seguridad)
+                await this.autoBackup();
+                return true;
+            } else {
+                this.showStatus('Error: ' + result.message, true);
+                return false;
+            }
         } catch (e) {
             console.error('Error guardando factura:', e);
             this.showStatus('Error guardando factura: ' + e.message, true);
@@ -235,37 +217,31 @@ const Backup = {
         return this.saveInvoice(invoice);
     },
 
-    async restoreFromFolder() {
+    // Escribe un snapshot JSON completo (facturas + cotizaciones + productos)
+    // en la carpeta de respaldo. Siempre sobrescribe el mismo archivo "al día".
+    async autoBackup() {
+        if (!this.isElectron() || !this.backupPath) return false;
+
         try {
-            const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
-            let count = 0;
+            const data = {
+                invoices: Storage.getInvoices(),
+                quotations: Storage.getQuotations(),
+                products: Storage.getProducts(),
+                lastInvoiceNumber: Storage.get('lastInvoiceNumber') || 0,
+                lastQuotationNumber: Storage.get('lastQuotationNumber') || 0,
+                exportDate: new Date().toISOString(),
+                companyName: 'Gallinaza y Materiales Tejada'
+            };
 
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'directory') {
-                    for await (const file of entry.values()) {
-                        if (file.kind === 'file' && file.name.endsWith('.json')) {
-                            const fileHandle = await entry.getFileHandle(file.name);
-                            const fileData = await fileHandle.getFile();
-                            const text = await fileData.text();
-                            const invoice = JSON.parse(text);
+            const result = await window.electronAPI.saveJson({
+                fileName: 'Backup-Automatico.json',
+                content: JSON.stringify(data, null, 2)
+            });
 
-                            if (invoice.number && invoice.type === 'factura') {
-                                const invoices = Storage.getInvoices();
-                                const exists = invoices.some(inv => inv.number === invoice.number);
-                                if (!exists) {
-                                    invoices.push(invoice);
-                                    Storage.saveInvoices(invoices);
-                                    count++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return count;
+            return result && result.success;
         } catch (e) {
-            return 0;
+            console.error('Error en respaldo automático:', e);
+            return false;
         }
     },
 
@@ -286,9 +262,8 @@ const Backup = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const date = new Date();
-        const fileName = `backup-gallinaza-${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}.json`;
         a.href = url;
-        a.download = fileName;
+        a.download = `backup-gallinaza-${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}.json`;
         a.click();
         URL.revokeObjectURL(url);
     },
@@ -310,13 +285,22 @@ const Backup = {
                         const existing = Storage.getInvoices();
                         const existingNumbers = new Set(existing.map(i => i.number));
                         const newInvoices = data.invoices.filter(i => !existingNumbers.has(i.number));
-                        Storage.saveInvoices([...existing, ...newInvoices]);
+                        const merged = [...existing, ...newInvoices];
+                        Storage.saveInvoices(merged);
+                        // Mantener el contador por delante del número más alto para no reutilizar números
+                        const maxInvoice = merged.reduce((m, i) => Math.max(m, Number(i.number) || 0),
+                            Math.max(Storage.get('lastInvoiceNumber') || 0, Number(data.lastInvoiceNumber) || 0));
+                        Storage.set('lastInvoiceNumber', maxInvoice);
                     }
                     if (data.quotations) {
                         const existing = Storage.getQuotations();
                         const existingNumbers = new Set(existing.map(q => q.number));
                         const newQuotations = data.quotations.filter(q => !existingNumbers.has(q.number));
-                        Storage.saveQuotations([...existing, ...newQuotations]);
+                        const merged = [...existing, ...newQuotations];
+                        Storage.saveQuotations(merged);
+                        const maxQuote = merged.reduce((m, q) => Math.max(m, Number(q.number) || 0),
+                            Math.max(Storage.get('lastQuotationNumber') || 0, Number(data.lastQuotationNumber) || 0));
+                        Storage.set('lastQuotationNumber', maxQuote);
                     }
                     if (data.products) {
                         const existing = Storage.getProducts();

@@ -10,6 +10,9 @@ const Invoices = {
     },
 
     setupListeners() {
+        if (this.listenersReady) return;
+        this.listenersReady = true;
+
         document.getElementById('invoice-payment').addEventListener('input', () => {
             this.updatePaymentSummary();
         });
@@ -34,7 +37,7 @@ const Invoices = {
     },
 
     setTodayDate() {
-        document.getElementById('invoice-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('invoice-date').value = Storage.todayLocalISO();
     },
 
     searchProduct(query) {
@@ -51,7 +54,7 @@ const Invoices = {
         } else {
             list.innerHTML = results.map(p => `
                 <div class="product-search-item" onclick="Invoices.selectProduct(${p.id})">
-                    <span class="product-name">${p.name}</span>
+                    <span class="product-name">${Products.escapeHtml(p.name)}</span>
                     <span class="product-price">${Products.formatCurrency(p.price)}</span>
                 </div>
             `).join('');
@@ -72,22 +75,39 @@ const Invoices = {
 
     addItem() {
         const productId = parseInt(document.getElementById('invoice-product-id').value);
-        const quantity = parseInt(document.getElementById('invoice-quantity').value);
+        const quantity = parseFloat(document.getElementById('invoice-quantity').value);
+        const unitPrice = parseFloat(document.getElementById('invoice-unit-price').value);
 
         if (!productId || isNaN(quantity) || quantity <= 0) {
             alert('Seleccione un producto y cantidad válida');
             return;
         }
 
+        if (isNaN(unitPrice) || unitPrice < 0) {
+            alert('Ingrese un precio unitario válido');
+            return;
+        }
+
         const product = Products.getById(productId);
         if (!product) return;
 
+        const alreadyInCart = this.items
+            .filter(item => item.productId === product.id)
+            .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (alreadyInCart + quantity > product.stock) {
+            alert(`Stock insuficiente. Disponible: ${product.stock}, ya en la factura: ${alreadyInCart}`);
+            return;
+        }
+
+        // El precio se toma del campo editable (permite ajustar solo esta factura,
+        // sin modificar el precio del catálogo). El total se redondea al peso.
         this.items.push({
             productId: product.id,
             name: product.name,
             quantity: quantity,
-            unitPrice: product.price,
-            total: quantity * product.price
+            unitPrice: unitPrice,
+            total: Math.round(quantity * unitPrice)
         });
 
         this.updateTable();
@@ -104,7 +124,7 @@ const Invoices = {
         tbody.innerHTML = this.items.map((item, i) => `
             <tr>
                 <td style="text-align:center;">${item.quantity}</td>
-                <td>${item.name}</td>
+                <td>${Products.escapeHtml(item.name)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.unitPrice)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.total)}</td>
                 <td><button class="btn btn-danger btn-small" onclick="Invoices.removeItem(${i})">X</button></td>
@@ -206,6 +226,18 @@ const Invoices = {
         };
     },
 
+    applyStockChange(items, direction) {
+        const products = Storage.getProducts();
+        items.forEach(item => {
+            const product = products.find(p => p.id === item.productId);
+            if (product) {
+                // Redondear a 3 decimales para evitar residuos de coma flotante (ej. 29.699999)
+                product.stock = Math.round((product.stock + direction * item.quantity) * 1000) / 1000;
+            }
+        });
+        Storage.saveProducts(products);
+    },
+
     async save() {
         if (this.items.length === 0) {
             alert('Agregue al menos un producto');
@@ -238,7 +270,12 @@ const Invoices = {
 
         const invoices = Storage.getInvoices();
         invoices.push(invoice);
-        Storage.saveInvoices(invoices);
+        const persisted = Storage.saveInvoices(invoices);
+        if (!persisted) {
+            // Storage.set ya mostró el error; no seguimos como si se hubiera guardado
+            return;
+        }
+        this.applyStockChange(invoice.items, -1);
 
         // Update invoice number
         Storage.set('lastInvoiceNumber', invoice.number);
@@ -287,13 +324,22 @@ const Invoices = {
 
         const invoices = Storage.getInvoices();
         invoices.push(invoice);
-        Storage.saveInvoices(invoices);
+        const persisted = Storage.saveInvoices(invoices);
+        if (!persisted) {
+            // Storage.set ya mostró el error; no imprimimos ni limpiamos para no perder los datos en pantalla
+            return;
+        }
+        this.applyStockChange(invoice.items, -1);
         Storage.set('lastInvoiceNumber', invoice.number);
 
-        Backup.saveInvoice(invoice);
+        const saved = await Backup.saveInvoice(invoice);
+        if (!saved) {
+            alert('Factura guardada, pero NO se pudo respaldar el PDF en disco. ' +
+                  'Seleccione una carpeta de respaldo en Inicio.');
+        }
 
         // Print
-        const html = this.generatePrintHTML(formData, client, total);
+        const html = this.generatePrintHTML(formData, client, total, invoice.items);
         this.openPrintWindow(html);
 
         // Clear form for next invoice
@@ -302,34 +348,11 @@ const Invoices = {
         App.updateDashboard();
     },
 
-    deleteLast() {
-        const invoices = Storage.getInvoices();
-        if (invoices.length === 0) {
-            alert('No hay facturas para eliminar');
-            return;
-        }
-
-        const lastInvoice = invoices[invoices.length - 1];
-        const confirmMsg = `¿Eliminar factura No. ${String(lastInvoice.number).padStart(6, '0')}?\n` +
-                          `Cliente: ${lastInvoice.client.name}\n` +
-                          `Total: ${Products.formatCurrency(lastInvoice.total)}`;
-
-        if (!confirm(confirmMsg)) return;
-
-        invoices.pop();
-        Storage.saveInvoices(invoices);
-        
-        this.clearForm();
-        History.load();
-        App.updateDashboard();
-        alert('Factura eliminada');
-    },
-
-    generatePrintHTML(formData, client, total) {
-        const itemsHTML = this.items.map(item => `
+    generatePrintHTML(formData, client, total, items) {
+        const itemsHTML = (items || this.items).map(item => `
             <tr>
                 <td style="text-align:center;">${item.quantity}</td>
-                <td>${item.name}</td>
+                <td>${Products.escapeHtml(item.name)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.unitPrice)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.total)}</td>
             </tr>
@@ -393,17 +416,17 @@ const Invoices = {
                 <div><span class="info-label">No. Factura:</span> ${formData.number}</div>
             </div>
             <div class="info-row">
-                <div><span class="info-label">Cliente:</span> ${client.name || 'N/A'}</div>
-                <div><span class="info-label">NIT/Cédula:</span> ${client.id || 'N/A'}</div>
+                <div><span class="info-label">Cliente:</span> ${Products.escapeHtml(client.name) || 'N/A'}</div>
+                <div><span class="info-label">NIT/Cédula:</span> ${Products.escapeHtml(client.id) || 'N/A'}</div>
             </div>
             <div class="info-row">
-                <div><span class="info-label">Teléfono:</span> ${client.phone || 'N/A'}</div>
-                <div><span class="info-label">Dirección:</span> ${client.address || 'N/A'}</div>
+                <div><span class="info-label">Teléfono:</span> ${Products.escapeHtml(client.phone) || 'N/A'}</div>
+                <div><span class="info-label">Dirección:</span> ${Products.escapeHtml(client.address) || 'N/A'}</div>
             </div>
 
             ${formData.shippingAddress ? `
             <div class="shipping">
-                <span class="info-label">Dirección de Envío:</span> ${formData.shippingAddress}
+                <span class="info-label">Dirección de Envío:</span> ${Products.escapeHtml(formData.shippingAddress)}
             </div>` : ''}
 
             <table>
@@ -530,25 +553,5 @@ const Invoices = {
 
         Storage.saveInvoices(invoices);
         History.load();
-    },
-
-    getCurrentInvoiceData() {
-        if (this.items.length === 0) return null;
-
-        const client = this.getClientData();
-        const formData = this.getFormData();
-        const total = this.items.reduce((sum, item) => sum + item.total, 0);
-
-        return {
-            number: parseInt(formData.number),
-            date: formData.date,
-            client,
-            shippingAddress: formData.shippingAddress,
-            items: [...this.items],
-            total,
-            payment: formData.payment,
-            paymentStatus: formData.paymentStatus,
-            dispatchStatus: formData.dispatchStatus
-        };
     }
 };

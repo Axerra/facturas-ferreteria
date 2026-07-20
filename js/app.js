@@ -20,10 +20,10 @@ const App = {
     },
 
     navigateTo(page) {
-        // Clear invoice filter when navigating away from history
-        if (page !== 'history') {
-            this.invoiceFilter = 'all';
-        }
+        // Reiniciar el filtro de estado en cada navegación. showInvoicesByStatus()
+        // llama a navigateTo primero y fija el filtro después, así que sigue funcionando;
+        // pero entrar a "Historial" por el menú ya no arrastra un filtro pegado.
+        this.invoiceFilter = 'all';
 
         // Update active link
         document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
@@ -71,8 +71,8 @@ const App = {
         // Ganancia del mes (suma de lo abonado/pagado)
         const monthlySales = invoices
             .filter(inv => {
-                const invDate = new Date(inv.date);
-                return invDate.getMonth() === currentMonth && 
+                const invDate = Storage.parseLocalDate(inv.date);
+                return invDate.getMonth() === currentMonth &&
                        invDate.getFullYear() === currentYear;
             })
             .reduce((sum, inv) => sum + (inv.payment || 0), 0);

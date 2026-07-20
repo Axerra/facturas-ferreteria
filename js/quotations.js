@@ -1,13 +1,18 @@
 const Quotations = {
     items: [],
+    currentQuoteNumber: null,
 
     init() {
         this.items = [];
+        this.currentQuoteNumber = null;
         this.setupListeners();
         this.clearSearchFields();
     },
 
     setupListeners() {
+        if (this.listenersReady) return;
+        this.listenersReady = true;
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.product-search-container')) {
                 document.getElementById('quote-product-list').classList.remove('active');
@@ -36,7 +41,7 @@ const Quotations = {
         } else {
             list.innerHTML = results.map(p => `
                 <div class="product-search-item" onclick="Quotations.selectProduct(${p.id})">
-                    <span class="product-name">${p.name}</span>
+                    <span class="product-name">${Products.escapeHtml(p.name)}</span>
                     <span class="product-price">${Products.formatCurrency(p.price)}</span>
                 </div>
             `).join('');
@@ -57,30 +62,40 @@ const Quotations = {
 
     addItem() {
         const productId = parseInt(document.getElementById('quote-product-id').value);
-        const quantity = parseInt(document.getElementById('quote-quantity').value);
+        const quantity = parseFloat(document.getElementById('quote-quantity').value);
+        const unitPrice = parseFloat(document.getElementById('quote-unit-price').value);
 
         if (!productId || isNaN(quantity) || quantity <= 0) {
             alert('Seleccione un producto y cantidad válida');
             return;
         }
 
+        if (isNaN(unitPrice) || unitPrice < 0) {
+            alert('Ingrese un precio unitario válido');
+            return;
+        }
+
         const product = Products.getById(productId);
         if (!product) return;
 
+        // Precio tomado del campo editable (solo para esta cotización); total redondeado al peso
         this.items.push({
             productId: product.id,
             name: product.name,
             quantity: quantity,
-            unitPrice: product.price,
-            total: quantity * product.price
+            unitPrice: unitPrice,
+            total: Math.round(quantity * unitPrice)
         });
 
+        // El carrito cambió: la próxima impresión será una cotización nueva
+        this.currentQuoteNumber = null;
         this.updateTable();
         this.clearSearchFields();
     },
 
     removeItem(index) {
         this.items.splice(index, 1);
+        this.currentQuoteNumber = null;
         this.updateTable();
     },
 
@@ -89,7 +104,7 @@ const Quotations = {
         tbody.innerHTML = this.items.map((item, i) => `
             <tr>
                 <td>${item.quantity}</td>
-                <td>${item.name}</td>
+                <td>${Products.escapeHtml(item.name)}</td>
                 <td>${Products.formatCurrency(item.unitPrice)}</td>
                 <td>${Products.formatCurrency(item.total)}</td>
                 <td><button class="btn btn-danger btn-small" onclick="Quotations.removeItem(${i})">X</button></td>
@@ -107,6 +122,7 @@ const Quotations = {
 
     clearForm() {
         this.items = [];
+        this.currentQuoteNumber = null;
         document.getElementById('quote-client-name').value = '';
         document.getElementById('quote-client-id').value = '';
         document.getElementById('quote-client-phone').value = '';
@@ -130,19 +146,21 @@ const Quotations = {
             return;
         }
 
-        const client = this.getClientData();
-        const quoteNumber = Storage.getNextQuotationNumber();
-        const date = new Date().toLocaleDateString('es-CO');
-        const total = this.items.reduce((sum, item) => sum + item.total, 0);
+        // Guarda la cotización (asigna y persiste su número) para que quede en el
+        // Historial y el número impreso coincida con el guardado. Antes se "quemaban"
+        // números en cada impresión sin guardar nada.
+        const quotation = this.save();
+        if (!quotation) return;
 
-        const html = this.generatePrintHTML(quoteNumber, date, client, total);
+        const date = Storage.parseLocalDate(quotation.date).toLocaleDateString('es-CO');
+        const html = this.generatePrintHTML(quotation.number, date, quotation.client, quotation.total, quotation.items);
         this.openPrintWindow(html);
     },
 
-    generatePrintHTML(quoteNumber, date, client, total) {
-        const itemsHTML = this.items.map(item => `            <tr>
+    generatePrintHTML(quoteNumber, date, client, total, items) {
+        const itemsHTML = (items || this.items).map(item => `            <tr>
                 <td style="text-align:center;">${item.quantity}</td>
-                <td>${item.name}</td>
+                <td>${Products.escapeHtml(item.name)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.unitPrice)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.total)}</td>
             </tr>
@@ -186,12 +204,12 @@ const Quotations = {
                 <div><span class="info-label">No. Cotización:</span> ${String(quoteNumber).padStart(6, '0')}</div>
             </div>
             <div class="info-row">
-                <div><span class="info-label">Cliente:</span> ${client.name || 'N/A'}</div>
-                <div><span class="info-label">NIT/Cédula:</span> ${client.id || 'N/A'}</div>
+                <div><span class="info-label">Cliente:</span> ${Products.escapeHtml(client.name) || 'N/A'}</div>
+                <div><span class="info-label">NIT/Cédula:</span> ${Products.escapeHtml(client.id) || 'N/A'}</div>
             </div>
             <div class="info-row">
-                <div><span class="info-label">Teléfono:</span> ${client.phone || 'N/A'}</div>
-                <div><span class="info-label">Dirección:</span> ${client.address || 'N/A'}</div>
+                <div><span class="info-label">Teléfono:</span> ${Products.escapeHtml(client.phone) || 'N/A'}</div>
+                <div><span class="info-label">Dirección:</span> ${Products.escapeHtml(client.address) || 'N/A'}</div>
             </div>
 
             <table>
@@ -237,18 +255,37 @@ const Quotations = {
         }
 
         const client = this.getClientData();
-        const quotation = {
-            number: Storage.getNextQuotationNumber(),
-            date: new Date().toISOString(),
-            client,
-            items: [...this.items],
-            total: this.items.reduce((sum, item) => sum + item.total, 0),
-            type: 'cotizacion'
-        };
-
+        const total = this.items.reduce((sum, item) => sum + item.total, 0);
         const quotations = Storage.getQuotations();
-        quotations.push(quotation);
-        Storage.saveQuotations(quotations);
+
+        let quotation = null;
+
+        // Si esta cotización ya fue guardada (mismo carrito), la actualizamos en vez
+        // de crear una nueva; así reimprimir no genera duplicados ni "quema" números.
+        if (this.currentQuoteNumber != null) {
+            const idx = quotations.findIndex(q => q.number === this.currentQuoteNumber);
+            if (idx !== -1) {
+                quotation = { ...quotations[idx], client, items: [...this.items], total };
+                quotations[idx] = quotation;
+            }
+        }
+
+        if (!quotation) {
+            quotation = {
+                number: Storage.getNextQuotationNumber(),
+                date: new Date().toISOString(),
+                client,
+                items: [...this.items],
+                total,
+                type: 'cotizacion'
+            };
+            quotations.push(quotation);
+        }
+
+        const ok = Storage.saveQuotations(quotations);
+        if (!ok) return false;
+
+        this.currentQuoteNumber = quotation.number;
         return quotation;
     },
 
@@ -259,23 +296,21 @@ const Quotations = {
         }
 
         const client = this.getClientData();
-        
-        // Fill invoice form
-        document.getElementById('invoice-number').value = String(Storage.get('lastInvoiceNumber') || 0 + 1).padStart(6, '0');
-        document.getElementById('invoice-date').value = new Date().toISOString().split('T')[0];
+        const itemsToTransfer = [...this.items];
+
+        // Save as quotation first
+        this.save();
+
+        // Navigate to invoices (this resets Invoices.items/fields via Invoices.init())
+        App.navigateTo('invoices');
+
+        // Now fill the invoice form with the quotation's client and items
         document.getElementById('invoice-client-name').value = client.name;
         document.getElementById('invoice-client-id').value = client.id;
         document.getElementById('invoice-client-phone').value = client.phone;
         document.getElementById('invoice-client-address').value = client.address;
 
-        // Copy items
-        Invoices.items = [...this.items];
+        Invoices.items = itemsToTransfer;
         Invoices.updateTable();
-
-        // Save as quotation first
-        this.save();
-
-        // Navigate to invoices
-        App.navigateTo('invoices');
     }
 };
