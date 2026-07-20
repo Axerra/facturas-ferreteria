@@ -140,16 +140,13 @@ const Quotations = {
     },
 
     generatePrintHTML(quoteNumber, date, client, total) {
-        const itemsHTML = this.items.map(item => `
-            <tr>
+        const itemsHTML = this.items.map(item => `            <tr>
                 <td style="text-align:center;">${item.quantity}</td>
                 <td>${item.name}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.unitPrice)}</td>
                 <td style="text-align:right;">${Products.formatCurrency(item.total)}</td>
             </tr>
         `).join('');
-
-        const total = this.items.reduce((sum, item) => sum + item.total, 0);
 
         return `
         <!DOCTYPE html>
